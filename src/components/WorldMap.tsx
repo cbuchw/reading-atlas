@@ -178,14 +178,6 @@ export const WorldMap: React.FC<WorldMapProps> = ({ books, onCountryClick, selec
   return (
     <div ref={containerRef} className="w-full h-full min-h-[500px] bg-paper rounded-[3rem] border border-brass/20 shadow-inner overflow-hidden relative">
       <svg ref={svgRef} className="w-full h-full" />
-      
-      <div className="absolute bottom-8 left-8 flex flex-col gap-2 bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/20">
-        <span className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-ink/40">Reading Density</span>
-        <div className="flex items-center gap-3">
-          <div className="h-2 w-32 bg-gradient-to-r from-[#D6D1C4] to-[#4A4A38] rounded-full" />
-          <span className="text-[10px] font-bold text-ink/40">High</span>
-        </div>
-      </div>
     </div>
   );
 };

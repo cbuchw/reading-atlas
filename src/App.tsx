@@ -155,28 +155,36 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-2xl w-full text-center"
         >
-          <div className="mb-12">
+          <div className="mb-16">
             <span className="block text-2xl font-serif italic text-ink/60 mb-2">The</span>
-            <h1 className="text-8xl font-display font-black text-ink tracking-tighter leading-none mb-4">Reading Atlas</h1>
-            <span className="block text-xl font-serif text-ink/40 uppercase tracking-[0.4em]">of your journey</span>
+            <h1 className="text-8xl font-display font-black text-ink tracking-tighter leading-none mb-8">Reading Atlas</h1>
+            <div className="flex flex-col items-center gap-6">
+              <div className="w-12 h-px bg-brass/30" />
+              <span className="text-xs font-sans font-bold text-brass uppercase tracking-[0.5em]">Map your reading life</span>
+            </div>
           </div>
           
-          <p className="text-ink/50 text-xl mb-16 leading-relaxed italic max-w-md mx-auto">
-            "A reader lives a thousand lives before he dies... The man who never reads lives only one."
-          </p>
+          <div className="mb-16 max-w-md mx-auto">
+            <p className="font-serif italic text-3xl text-olive/70 leading-tight">
+              “To travel far, there is no better ship than a book.”
+            </p>
+            <span className="block mt-6 font-serif text-brass text-lg">
+              — Emily Dickinson
+            </span>
+          </div>
+
           <button
             onClick={handleSignIn}
             disabled={signingIn}
-            className="w-full py-5 bg-olive text-white font-semibold rounded-2xl hover:bg-olive/90 transition-all shadow-xl shadow-olive/20 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-[260px] mx-auto py-5 bg-olive text-white font-semibold rounded-2xl hover:bg-olive/90 transition-all shadow-xl shadow-olive/20 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {signingIn ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <LogIn className="w-5 h-5" />
             )}
-            {signingIn ? 'Opening secure portal...' : 'Begin your journey'}
+            {signingIn ? 'Opening portal...' : 'Begin your journey'}
           </button>
-          <p className="mt-8 text-[10px] text-brass font-bold uppercase tracking-[0.3em]">Curated Reading Atlas</p>
         </motion.div>
       </div>
     );
