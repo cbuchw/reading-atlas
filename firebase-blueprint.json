@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "Book": {
+      "title": "Book",
+      "description": "A book in the user's personal library",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "The title of the book"
+        },
+        "author": {
+          "type": "string",
+          "description": "The author of the book"
+        },
+        "isbn": {
+          "type": "string",
+          "description": "The ISBN-10 or ISBN-13 of the book"
+        },
+        "coverUrl": {
+          "type": "string",
+          "description": "URL to the book's cover image"
+        },
+        "countries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of countries associated with the book"
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the book was added"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this book"
+        }
+      },
+      "required": ["title", "author", "userId", "addedAt"]
+    }
+  },
+  "firestore": {
+    "books": {
+      "schema": "Book",
+      "description": "Collection of books"
+    }
+  }
+}
