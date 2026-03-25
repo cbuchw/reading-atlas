@@ -21,37 +21,39 @@ export const BookList: React.FC<BookListProps> = ({ books, onDelete, onEdit }) =
   );
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative w-full md:max-w-md">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-brass w-5 h-5" />
           <input
             type="text"
             placeholder="Search by title or author..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-brass/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-olive/5 focus:border-olive transition-all"
+            className="w-full pl-12 pr-4 py-3 bg-white border border-brass/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-olive/5 focus:border-olive transition-all text-sm sm:text-base"
           />
         </div>
         
-        <div className="flex bg-white border border-brass/20 rounded-2xl p-1 shadow-sm">
+        <div className="flex bg-white border border-brass/20 rounded-2xl p-1 shadow-sm w-full sm:w-auto justify-center sm:justify-start">
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
-              "p-2 rounded-xl transition-all",
+              "flex-1 sm:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-2",
               viewMode === 'grid' ? "bg-olive text-white shadow-md" : "text-brass hover:bg-paper"
             )}
           >
             <LayoutGrid className="w-5 h-5" />
+            <span className="sm:hidden text-xs font-bold uppercase tracking-wider">Grid</span>
           </button>
           <button
             onClick={() => setViewMode('list')}
             className={cn(
-              "p-2 rounded-xl transition-all",
+              "flex-1 sm:flex-none p-2 rounded-xl transition-all flex items-center justify-center gap-2",
               viewMode === 'list' ? "bg-olive text-white shadow-md" : "text-brass hover:bg-paper"
             )}
           >
             <ListIcon className="w-5 h-5" />
+            <span className="sm:hidden text-xs font-bold uppercase tracking-wider">List</span>
           </button>
         </div>
       </div>
@@ -65,7 +67,7 @@ export const BookList: React.FC<BookListProps> = ({ books, onDelete, onEdit }) =
       ) : (
         <div className={cn(
           viewMode === 'grid' 
-            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6" 
+            ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6" 
             : "space-y-4"
         )}>
           <AnimatePresence mode="popLayout">
@@ -129,21 +131,27 @@ export const BookList: React.FC<BookListProps> = ({ books, onDelete, onEdit }) =
 
                 {/* Info */}
                 <div className={cn(
-                  "flex-1 flex flex-col",
-                  viewMode === 'grid' ? "p-4" : ""
+                  "flex-1 flex flex-col min-w-0",
+                  viewMode === 'grid' ? "p-3 sm:p-4" : ""
                 )}>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h4 className={cn(
-                      "font-serif font-bold text-ink mb-1 line-clamp-1",
-                      viewMode === 'grid' ? "text-base" : "text-xl"
+                      "font-serif font-bold text-ink mb-0.5 sm:mb-1 truncate",
+                      viewMode === 'grid' ? "text-sm sm:text-base" : "text-lg sm:text-xl"
                     )}>
                       {book.title}
                     </h4>
-                    <p className="text-sm text-ink/50 italic mb-2">{book.author}</p>
+                    <p className="text-xs sm:text-sm text-ink/50 italic mb-2 truncate">{book.author}</p>
                     
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                      {book.isFictional && (
+                        <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-brass/10 text-brass text-[8px] sm:text-[9px] font-bold uppercase tracking-widest rounded border border-brass/20">
+                          <Globe className="w-2 h-2" />
+                          Fictional
+                        </span>
+                      )}
                       {book.countries?.map(c => (
-                        <span key={c} className="inline-flex items-center gap-1 px-2 py-0.5 bg-olive/5 text-olive text-[9px] font-bold uppercase tracking-widest rounded border border-olive/10">
+                        <span key={c} className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-olive/5 text-olive text-[8px] sm:text-[9px] font-bold uppercase tracking-widest rounded border border-olive/10">
                           <MapPin className="w-2 h-2" />
                           {c}
                         </span>

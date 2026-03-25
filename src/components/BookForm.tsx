@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Loader2, Plus, X, Book as BookIcon, Check, AlertCircle, Search as SearchIcon, ClipboardPaste } from 'lucide-react';
+import { Search, Loader2, Plus, X, Book as BookIcon, Check, AlertCircle, Search as SearchIcon, ClipboardPaste, ExternalLink, Upload } from 'lucide-react';
 import { searchBooks, BookMetadata, fetchBookByISBN } from '../services/openLibrary';
 import { cn } from '../lib/utils';
 import { COUNTRIES } from '../constants';
@@ -22,15 +22,17 @@ interface BookFormProps {
   }) => void;
   initialData?: any;
   onClose: () => void;
-  onGleephClick?: () => void;
+  onImportCSV?: () => void;
+  onImportGoodreads?: () => void;
 }
 
-export const BookForm: React.FC<BookFormProps> = ({ onAdd, onUpdate, initialData, onClose, onGleephClick }) => {
-  const [isbn, setIsbn] = useState(initialData?.isbn || '');
-  const [title, setTitle] = useState(initialData?.title || '');
-  const [author, setAuthor] = useState(initialData?.author || '');
-  const [coverUrl, setCoverUrl] = useState(initialData?.coverUrl || '');
+export const BookForm: React.FC<BookFormProps> = ({ onAdd, onUpdate, initialData, onClose, onImportCSV, onImportGoodreads }) => {
+  const [isbn, setIsbn] = useState(String(initialData?.isbn || ''));
+  const [title, setTitle] = useState(String(initialData?.title || ''));
+  const [author, setAuthor] = useState(String(initialData?.author || ''));
+  const [coverUrl, setCoverUrl] = useState(String(initialData?.coverUrl || ''));
   const [countries, setCountries] = useState<string[]>(initialData?.countries || []);
+  const [isFictional, setIsFictional] = useState(initialData?.isFictional || false);
   const [countryInput, setCountryInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [lookupStatus, setLookupStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -55,7 +57,7 @@ export const BookForm: React.FC<BookFormProps> = ({ onAdd, onUpdate, initialData
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const selectBook = (book: BookMetadata) => {
+  const selectBook = async (book: BookMetadata) => {
     setTitle(book.title);
     setAuthor(book.author);
     setIsbn(book.isbn || '');
@@ -110,7 +112,8 @@ export const BookForm: React.FC<BookFormProps> = ({ onAdd, onUpdate, initialData
       author,
       isbn,
       coverUrl,
-      countries
+      countries,
+      isFictional
     };
 
     if (isEditMode && onUpdate) {
@@ -126,38 +129,55 @@ export const BookForm: React.FC<BookFormProps> = ({ onAdd, onUpdate, initialData
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-ink/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <motion.div 
-        initial={{ scale: 0.95, y: 20 }}
+        initial={{ scale: 0.95, y: '100%' }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.95, y: 20 }}
-        className="bg-paper w-full max-w-lg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-brass/20"
+        exit={{ scale: 0.95, y: '100%' }}
+        className="bg-paper w-full max-w-lg rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] border border-brass/20"
       >
-        <div className="p-8 border-b border-brass/10 flex justify-between items-center bg-paper">
-          <h2 className="text-2xl font-serif font-semibold text-ink flex items-center gap-3">
-            <BookIcon className="w-6 h-6 text-olive" />
-            {isEditMode ? 'Edit book details' : 'Add to your collection'}
+        <div className="p-6 sm:p-8 border-b border-brass/10 flex justify-between items-center bg-paper">
+          <h2 className="text-xl sm:text-2xl font-serif font-semibold text-ink flex items-center gap-3">
+            <BookIcon className="w-5 h-5 sm:w-6 sm:h-6 text-olive" />
+            {isEditMode ? 'Edit book' : 'Add to collection'}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-brass/10 rounded-full transition-colors">
             <X className="w-5 h-5 text-ink/40" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-8 overflow-y-auto">
-          {/* Gleeph Import Shortcut */}
-          {!isEditMode && onGleephClick && (
-            <button
-              type="button"
-              onClick={onGleephClick}
-              className="w-full py-4 px-6 bg-olive/5 border border-olive/10 text-olive rounded-2xl flex items-center justify-center gap-3 hover:bg-olive/10 transition-all group"
-            >
-              <ClipboardPaste className="w-5 h-5" />
-              <div className="text-left">
-                <p className="font-bold text-sm">Importer depuis Gleeph</p>
-                <p className="text-[10px] opacity-60 uppercase tracking-wider">Copier-coller ou capture d'écran</p>
-              </div>
-            </button>
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6 sm:space-y-8 overflow-y-auto">
+          {/* Import Shortcuts */}
+          {!isEditMode && (onImportCSV || onImportGoodreads) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {onImportGoodreads && (
+                <button
+                  type="button"
+                  onClick={onImportGoodreads}
+                  className="py-4 px-6 bg-olive/5 border border-olive/10 text-olive rounded-2xl flex items-center justify-center gap-3 hover:bg-olive/10 transition-all group"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                  <div className="text-left">
+                    <p className="font-bold text-sm">Goodreads</p>
+                    <p className="text-[10px] opacity-60 uppercase tracking-wider">Migration</p>
+                  </div>
+                </button>
+              )}
+              {onImportCSV && (
+                <button
+                  type="button"
+                  onClick={onImportCSV}
+                  className="py-4 px-6 bg-brass/5 border border-brass/10 text-brass rounded-2xl flex items-center justify-center gap-3 hover:bg-brass/10 transition-all group"
+                >
+                  <Upload className="w-5 h-5" />
+                  <div className="text-left">
+                    <p className="font-bold text-sm">Import CSV</p>
+                    <p className="text-[10px] opacity-60 uppercase tracking-wider">Bulk upload</p>
+                  </div>
+                </button>
+              )}
+            </div>
           )}
 
           {/* Search by Title/Author */}
@@ -286,13 +306,31 @@ export const BookForm: React.FC<BookFormProps> = ({ onAdd, onUpdate, initialData
 
           {/* Countries Autocomplete */}
           <div className="space-y-3">
-            <label className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-ink/40">Countries</label>
+            <div className="flex justify-between items-center">
+              <label className="text-[10px] font-sans font-bold uppercase tracking-[0.2em] text-ink/40">Countries</label>
+              <button
+                type="button"
+                onClick={() => setIsFictional(!isFictional)}
+                className={cn(
+                  "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded transition-colors",
+                  isFictional ? "bg-brass text-white" : "text-brass hover:bg-brass/5"
+                )}
+              >
+                {isFictional ? 'Fictional World Active' : 'Mark as Fictional'}
+              </button>
+            </div>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search for a country..."
+                placeholder={isFictional ? "Fictional places (Middle-earth...)" : "Search for a country..."}
                 value={countryInput}
                 onChange={(e) => setCountryInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && countryInput) {
+                    e.preventDefault();
+                    addCountry(countryInput);
+                  }
+                }}
                 className="w-full px-5 py-3 bg-white border border-brass/20 rounded-2xl focus:outline-none focus:ring-4 focus:ring-olive/5 focus:border-olive transition-all"
               />
               <AnimatePresence>

@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { X, Upload, FileText, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { X, Upload, FileText, CheckCircle2, Loader2, AlertCircle, ExternalLink, Info } from 'lucide-react';
 import Papa from 'papaparse';
 import { motion, AnimatePresence } from 'motion/react';
 import { fetchBookByISBN, searchBooks } from '../services/openLibrary';
 
-interface CSVImportProps {
+interface GoodreadsImportProps {
   onImport: (books: any[]) => void;
   onClose: () => void;
 }
 
-export const CSVImport: React.FC<CSVImportProps> = ({ onImport, onClose }) => {
-  const [step, setStep] = useState<'upload' | 'processing' | 'review'>('upload');
+export const GoodreadsImport: React.FC<GoodreadsImportProps> = ({ onImport, onClose }) => {
+  const [step, setStep] = useState<'guide' | 'upload' | 'processing' | 'review'>('guide');
   const [progress, setProgress] = useState({ current: 0, total: 0, status: '' });
   const [results, setResults] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -28,28 +28,33 @@ export const CSVImport: React.FC<CSVImportProps> = ({ onImport, onClose }) => {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: 'greedy',
-      transformHeader: (header) => header.trim().toLowerCase(),
       complete: async (results) => {
         const rows = results.data as any[];
+        
+        // Validate Goodreads format
         const headers = results.meta.fields || [];
+        const hasTitle = headers.some(h => h.toLowerCase().trim() === 'title');
         
-        const hasTitle = headers.some(h => ['title', 'name', 'book'].some(kw => h.includes(kw)));
-        const hasAuthor = headers.some(h => ['author', 'writer', 'creator'].some(kw => h.includes(kw)));
-
-        if (rows.length === 0) {
-          setError('The CSV file appears to be empty.');
+        if (!hasTitle) {
+          setError('This file does not appear to be a valid Goodreads export.');
           setStep('upload');
           return;
         }
 
-        if (!hasTitle || !hasAuthor) {
-          setError('Could not find "title" and "author" columns. Please ensure your CSV has these headers.');
-          setStep('upload');
-          return;
-        }
+        // Normalize rows to lowercase headers
+        const normalizedRows = rows.map(row => {
+          const newRow: any = {};
+          Object.keys(row).forEach(key => {
+            newRow[key.toLowerCase().trim()] = row[key];
+          });
+          return newRow;
+        });
 
-        const toProcess = rows.slice(0, 500);
-        
+        // Filter for 'read' shelf if possible
+        const toProcess = normalizedRows
+          .filter(row => !row['exclusive shelf'] || row['exclusive shelf'] === 'read')
+          .slice(0, 500);
+
         setProgress({ current: 0, total: toProcess.length, status: 'Starting import...' });
 
         const batchSize = 5;
@@ -59,56 +64,43 @@ export const CSVImport: React.FC<CSVImportProps> = ({ onImport, onClose }) => {
           const batch = toProcess.slice(i, i + batchSize);
           
           const batchResults = await Promise.all(batch.map(async (row, index) => {
-            // Robust header detection (now headers are lowercase and trimmed)
-          const getVal = (keywords: string[]) => {
-            // Priority 1: Exact matches
-            for (const kw of keywords) {
-              const key = Object.keys(row).find(k => k === kw);
-              if (key) return row[key];
+            const title = String(row.title || '').trim();
+            const author = String(row.author || '').trim();
+            const isbn = (row.isbn || row.isbn13 || '').toString().replace(/[^0-9X]/g, '');
+
+            if (!title) return null;
+
+            const currentIndex = i + index + 1;
+            setProgress(prev => ({ 
+              ...prev,
+              current: currentIndex, 
+              status: `Enriching: ${title}` 
+            }));
+
+            let metadata = null;
+            if (isbn) {
+              metadata = await fetchBookByISBN(isbn);
             }
-            // Priority 2: Starts with keyword (e.g. "title (original)")
-            for (const kw of keywords) {
-              const key = Object.keys(row).find(k => k.startsWith(kw));
-              if (key) return row[key];
+            
+            if (!metadata) {
+              const searchResults = await searchBooks(`${title} ${author}`);
+              if (searchResults.length > 0) {
+                metadata = searchResults[0];
+              }
             }
-            // Priority 3: Contains keyword (but avoid "id" or "number")
-            for (const kw of keywords) {
-              const key = Object.keys(row).find(k => k.includes(kw) && !k.includes('id') && !k.includes('number'));
-              if (key) return row[key];
-            }
-            // Last resort: any match
-            for (const kw of keywords) {
-              const key = Object.keys(row).find(k => k.includes(kw));
-              if (key) return row[key];
-            }
-            return null;
-          };
 
-          const title = String(getVal(['title', 'name', 'book']) || '').trim();
-          const author = String(getVal(['author', 'writer', 'creator']) || '').trim();
+            const finalTitle = String(metadata?.title || title).trim();
+            const finalAuthor = String(metadata?.author || author).trim();
 
-          if (!title || !author) return null;
-
-          const currentIndex = i + index + 1;
-          setProgress(prev => ({ 
-            ...prev,
-            current: currentIndex, 
-            status: `Processing: ${title}` 
-          }));
-
-          // Enrich via Open Library
-          const searchResults = await searchBooks(`${title} ${author}`);
-          const metadata = searchResults.length > 0 ? searchResults[0] : null;
-
-          return {
-            title: String(metadata?.title || title).trim(),
-            author: String(metadata?.author || author).trim(),
-            isbn: String(metadata?.isbn || '').trim(),
-            coverUrl: metadata?.coverUrl,
-            countries: [],
-            isFictional: false,
-            addedAt: new Date()
-          };
+            return {
+              title: finalTitle,
+              author: finalAuthor,
+              isbn: String(metadata?.isbn || isbn).trim(),
+              coverUrl: metadata?.coverUrl,
+              countries: [],
+              isFictional: false,
+              addedAt: new Date()
+            };
           }));
 
           importedBooks.push(...batchResults.filter(b => b !== null));
@@ -131,12 +123,12 @@ export const CSVImport: React.FC<CSVImportProps> = ({ onImport, onClose }) => {
         initial={{ scale: 0.95, y: '100%' }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: '100%' }}
-        className="bg-paper w-full max-w-lg rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] border border-brass/20"
+        className="bg-paper w-full max-w-2xl rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[90vh] border border-brass/20"
       >
         <div className="p-6 sm:p-8 border-b border-brass/10 flex justify-between items-center bg-paper">
           <h2 className="text-xl sm:text-2xl font-serif font-semibold text-ink flex items-center gap-3">
-            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-olive" />
-            Import CSV
+            <ExternalLink className="w-5 h-5 sm:w-6 sm:h-6 text-olive" />
+            Goodreads Migration
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-brass/10 rounded-full transition-colors">
             <X className="w-5 h-5 text-ink/40" />
@@ -144,34 +136,36 @@ export const CSVImport: React.FC<CSVImportProps> = ({ onImport, onClose }) => {
         </div>
 
         <div className="p-6 sm:p-8 overflow-y-auto">
+          {step === 'guide' && (
+            <div className="space-y-8">
+              <div className="bg-olive/5 p-6 rounded-2xl border border-olive/10">
+                <h3 className="font-bold text-olive mb-4 flex items-center gap-2">
+                  <Info className="w-4 h-4" />
+                  How to export from Goodreads
+                </h3>
+                <ol className="space-y-4 text-sm text-ink/70 list-decimal list-inside">
+                  <li>Go to <span className="font-mono text-olive">My Books</span> on Goodreads.com</li>
+                  <li>Click <span className="font-mono text-olive">Import and Export</span> in the sidebar</li>
+                  <li>Click the <span className="font-mono text-olive">Export Library</span> button at the top right</li>
+                  <li>Wait for the file to generate and download it</li>
+                </ol>
+              </div>
+              <button
+                onClick={() => setStep('upload')}
+                className="w-full py-4 bg-olive text-white font-semibold rounded-2xl hover:bg-olive/90 transition-all shadow-xl shadow-olive/20"
+              >
+                I have my CSV file
+              </button>
+            </div>
+          )}
+
           {step === 'upload' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center mb-2">
-                <p className="text-sm text-ink/60 font-medium">Upload your library</p>
-                <button 
-                  onClick={() => {
-                    const csvContent = "title,author\nThe Great Gatsby,F. Scott Fitzgerald\n1984,George Orwell\nTo Kill a Mockingbird,Harper Lee";
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement("a");
-                    const url = URL.createObjectURL(blob);
-                    link.setAttribute("href", url);
-                    link.setAttribute("download", "reading_atlas_template.csv");
-                    link.style.visibility = 'hidden';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
-                  className="text-xs font-bold text-olive hover:text-olive/80 flex items-center gap-1 transition-colors"
-                >
-                  <FileText className="w-3 h-3" />
-                  Download Template
-                </button>
-              </div>
               <label className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-brass/30 rounded-[2rem] hover:border-olive/50 transition-colors cursor-pointer bg-white/50 group">
                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                   <Upload className="w-12 h-12 text-brass mb-4 group-hover:scale-110 transition-transform" />
-                  <p className="mb-2 text-sm text-ink/60 font-medium">Drop your CSV here</p>
-                  <p className="text-xs text-ink/40">Columns required: title, author</p>
+                  <p className="mb-2 text-sm text-ink/60 font-medium">Drop your Goodreads CSV here</p>
+                  <p className="text-xs text-ink/40">or click to browse</p>
                 </div>
                 <input type="file" className="hidden" accept=".csv" onChange={handleFileUpload} />
               </label>
@@ -206,10 +200,10 @@ export const CSVImport: React.FC<CSVImportProps> = ({ onImport, onClose }) => {
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-serif font-bold text-ink mb-2">Analyzing your library...</h3>
+                <h3 className="text-xl font-serif font-bold text-ink mb-2">Mapping your journey...</h3>
                 <p className="text-ink/40 italic">{progress.status}</p>
                 <p className="text-[10px] font-bold text-brass uppercase tracking-widest mt-4">
-                  {progress.current} of {progress.total} books
+                  {progress.current} of {progress.total} books processed
                 </p>
               </div>
             </div>
@@ -220,11 +214,28 @@ export const CSVImport: React.FC<CSVImportProps> = ({ onImport, onClose }) => {
               <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 flex items-center gap-4">
                 <CheckCircle2 className="w-10 h-10 text-emerald-500" />
                 <div>
-                  <h3 className="font-bold text-emerald-900">Analysis Complete</h3>
-                  <p className="text-sm text-emerald-700">We processed {results.length} books successfully.</p>
+                  <h3 className="font-bold text-emerald-900">Import Ready</h3>
+                  <p className="text-sm text-emerald-700">We found {results.length} books to add to your atlas.</p>
                 </div>
               </div>
               
+              <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
+                {results.slice(0, 10).map((book, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 bg-white border border-brass/10 rounded-xl">
+                    <div className="w-8 h-12 bg-paper rounded overflow-hidden flex-shrink-0">
+                      {book.coverUrl && <img src={book.coverUrl} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-ink truncate">{book.title}</p>
+                      <p className="text-xs text-ink/40">{book.countries.join(', ') || (book.isFictional ? 'Fictional World' : 'No location detected')}</p>
+                    </div>
+                  </div>
+                ))}
+                {results.length > 10 && (
+                  <p className="text-center text-xs text-ink/30 italic">...and {results.length - 10} more books</p>
+                )}
+              </div>
+
               <button
                 onClick={() => {
                   onImport(results);

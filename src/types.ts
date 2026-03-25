@@ -7,6 +7,7 @@ export interface Book {
   isbn?: string;
   coverUrl?: string;
   countries: string[];
+  isFictional?: boolean;
   addedAt: Timestamp;
   userId: string;
 }

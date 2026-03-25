@@ -142,14 +142,21 @@ export const WorldMap: React.FC<WorldMapProps> = ({ books, onCountryClick, selec
           const count = countryCounts[name] || 0;
           return count > 0 ? colorScale(count) : '#E8E4D8';
         })
-        .attr('stroke', (d: any) => d.properties.name === selectedCountry ? '#4A4A38' : '#D6D1C4')
-        .attr('stroke-width', (d: any) => d.properties.name === selectedCountry ? 1.5 : 0.5);
+        .attr('stroke', (d: any) => {
+          const name = d.properties.name;
+          return name === selectedCountry ? '#4A4A38' : '#D6D1C4';
+        })
+        .attr('stroke-width', (d: any) => {
+          const name = d.properties.name;
+          return name === selectedCountry ? 1.5 : 0.5;
+        })
+        .attr('stroke-dasharray', null);
       
       // Maintain current zoom transform
       g.attr('transform', transformRef.current.toString());
     }
 
-  }, [countryCounts, onCountryClick, selectedCountry]);
+  }, [countryCounts, onCountryClick, selectedCountry, books]);
 
   if (books.length === 0) {
     return (
@@ -176,7 +183,7 @@ export const WorldMap: React.FC<WorldMapProps> = ({ books, onCountryClick, selec
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full min-h-[500px] bg-paper rounded-[3rem] border border-brass/20 shadow-inner overflow-hidden relative">
+    <div ref={containerRef} className="w-full h-full min-h-[350px] sm:min-h-[500px] bg-paper rounded-[1.5rem] sm:rounded-[3rem] border border-brass/20 shadow-inner overflow-hidden relative">
       <svg ref={svgRef} className="w-full h-full" />
     </div>
   );
