@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: books
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - author: string (required)
+    //   - isbn: string (optional)
+    //   - coverUrl: string (optional)
+    //   - countries: list of strings (optional)
+    //   - fictionalPlaces: list of strings (optional)
+    //   - addedAt: timestamp (required)
+    //   - userId: string (required) - matches auth.uid
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function isValidBook(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.author is string && data.author.size() > 0 && data.author.size() < 500 &&
+             (!('isbn' in data) || (data.isbn is string && data.isbn.size() < 20)) &&
+             (!('coverUrl' in data) || (data.coverUrl is string && data.coverUrl.size() < 2000)) &&
+             (!('countries' in data) || (data.countries is list && data.countries.size() < 200)) &&
+             data.addedAt is timestamp &&
+             data.userId == request.auth.uid;
+    }
+
+    match /books/{bookId} {
+      allow read: if isAuthenticated() && isDocOwner();
+      allow create: if isAuthenticated() && isValidBook(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidBook(request.resource.data);
+      allow delete: if isAuthenticated() && isDocOwner();
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+  }
+}
